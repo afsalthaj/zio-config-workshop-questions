@@ -519,19 +519,6 @@ object Reader extends EitherSupport {
         map("options")(string))(SourceDetails4.apply, SourceDetails4.unapply)
   }
 
-  /**
-   * EXERCISE 21:
-   *
-   * As of now we gave both partitionCount and partition as part of the config.
-   * Ideally we need either Partition or the partitionCount
-   *
-   * There are many ways to solve this problem. A sealed trait, or you can simply use Either[Partition, Int]
-   *
-   * {{{
-   *   val config: ConfigDescriptor[Either[PartitionCount, Int]] = Partition.defaultConfig.orElseEither(int("partitionCount"))
-   * }}}
-   *
-   */
 
   final case class SourceDetails5(
     tableName: String,
@@ -543,19 +530,28 @@ object Reader extends EitherSupport {
   )
 
   object SourceDetails5 {
-    val defaultConfig: ConfigDescriptor[SourceDetails5] =
-      (string("tableName") |@|
-        Partition.defaultConfig.orElseEither(int("partitionCount")) |@|
-        list("columns")(string) |@|
-        nested("credentials")(Credentials.defaultConfig) |@|
-        string("renameFileTo").optional |@|
-        map("spark")(string))(SourceDetails5.apply, SourceDetails5.unapply)
+    /**
+     * EXERCISE 21:
+     *
+     * As of now we gave both partitionCount and partition as part of the config.
+     * Ideally we need either Partition or the partitionCount
+     *
+     * There are many ways to solve this problem. A sealed trait, or you can simply use Either[Partition, Int]
+     *
+     * {{{
+     *   val config: ConfigDescriptor[Either[PartitionCount, Int]] = Partition.defaultConfig.orElseEither(int("partitionCount"))
+     * }}}
+     */
+    val defaultConfig: ConfigDescriptor[SourceDetails5] = ???
   }
 
   /**
+   * EXERCISE 21:
+   *
    * Discuss more on Either.
-   * How does it behave when none is given in an Either.
-   * Read SourceDetails5.defaultConfig from a HOCON
+   * How does it behave when nothing is given for Either.
+   *
+   * Try running the below function
    */
   def readSourceDetaisl5FromHocon: Either[String, SourceDetails5] = {
     val hocon =
@@ -586,10 +582,7 @@ object Reader extends EitherSupport {
     } yield config
   }
 
-  /**
-   * Read more complicated structures:
-   * Say you want to read Map[String, List[String]]
-   */
+
   final case class SourceDetails6(
     tableName: String,
     partitionCount: Either[Partition, Int],
@@ -600,17 +593,18 @@ object Reader extends EitherSupport {
   )
 
   object SourceDetail6 {
-    val defaultConfig: ConfigDescriptor[SourceDetails6] =
-      (string("tableName") |@|
-        Partition.defaultConfig.orElseEither(int("partitionCount")) |@|
-        list("columns")(string) |@|
-        nested("credentials")(Credentials.defaultConfig) |@|
-        string("renameFileTo").optional |@|
-        map("options")(list(string)))(SourceDetails6.apply, SourceDetails6.unapply)
+    /**
+     * EXERCISE 22:
+     *
+     * Read more complicated structures.
+     *
+     * Say you want to read Map[String, List[String]]
+     */
+    val defaultConfig: ConfigDescriptor[SourceDetails6] = ???
   }
 
   /**
-   * Read SourceDetail6 from the HOCON
+   * Try running the below code to see the behavior of SourceDetail6.defaultConfig
    */
   def readSourceDetaisl6FromHocon: Either[String, SourceDetails6] = {
     val hocon =
@@ -634,7 +628,6 @@ object Reader extends EitherSupport {
 
     // See how it behaves if you don'y give partitionCount or partition and renameFileTo
     // Also try and introduce format error. Give name partition and partitionCount the same name
-
     for {
       hocon <- TypesafeConfigSource.fromHoconString(hocon)
       config <- read(SourceDetail6.defaultConfig from(hocon)).leftMap(_.prettyPrint())
@@ -642,14 +635,18 @@ object Reader extends EitherSupport {
   }
 
   /**
+   * EXERCISE 23:
+   *
    * What does map("input")(string("key")) represents?
+   *
+   * Try running the below code:
    */
   def complexMap1 = {
     val hocon =
       s"""
          | "input" : {
          |     x : {
-         |        "key" : "value"
+         |        "key" : "value",
          |     }
          |
          |     y : {
@@ -674,8 +671,10 @@ object Reader extends EitherSupport {
   }
 
   /**
+   * EXERCISE 24:
+   *
    * What does map("input")(nested("key")(list(Keys.config)) represent?
-   * See the error messages as well
+   * Try running the below code, and see the error reporting too
    */
   def complexMap2: Either[String, Map[String, List[Keys]]] = {
     val hocon =
@@ -710,8 +709,7 @@ object Reader extends EitherSupport {
       config <- read(map("input")(nested("key")(list(Keys.config))) from hocon).leftMap(_.prettyPrint())
     } yield config
   }
-
-
+  
 }
 
 
