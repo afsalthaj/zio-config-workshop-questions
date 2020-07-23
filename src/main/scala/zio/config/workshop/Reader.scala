@@ -27,7 +27,7 @@ import scala.util.Try
  * 7. It accumulates the errors all the way.
  * 8. It can compose different sources
  *
- * Take a look at Runner to call the function that you need to verify.
+ * Keep a note, zio-config is not a json library, and it is NOT tightly coupled to any protocol/format/source.
  */
 object Reader extends EitherSupport {
   final case class Credentials(username: String, password: String)
@@ -62,8 +62,8 @@ object Reader extends EitherSupport {
   def readSimpleMap: Either[ReadError[String], Credentials] = {
     val map =
       Map(
-        "USERNAME" -> "jon",
-        "PASSWORD" -> "abcd"
+        "username" -> "jon",
+        "password" -> "abcd"
       )
 
     ???
@@ -101,8 +101,10 @@ object Reader extends EitherSupport {
   def readCredentialsFromSystemProperties: ZIO[Any, ReadError[String], Credentials] = ???
 
   /**
+   * EXERCISE 7
+   *
    * Read the config from Json to Credentials case class.
-   * Instead of using TypesafeConfig.fromHocon, use the TypesafeConfigSource from read functions.
+   * Instead of using TypesafeConfig.fromHocon, use the TypesafeConfigSource and read functions= in zio-config.
    * It can be the case you will get Either as a return type and not ZIO
    */
   def readCredentialsFromSystemJson: Either[String, Credentials] = {
@@ -115,21 +117,19 @@ object Reader extends EitherSupport {
          | }
          |
          |""".stripMargin
-
-    for {
-      source <- TypesafeConfigSource.fromHoconString(json)
-      config <- read(defaultConfig from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
   /**
+   * EXERCISE 8 (Similar to 7, but with errors)
+   *
    * Read the config from Json to Credentials case class.
    * Instead of using TypesafeConfig.fromHocon, use the TypesafeConfigSource from read functions.
    * It can be the case you will get Either as a return type and not ZIO.
    * Also this time you get a ReadError in return since our json  is wrong.
    */
   def readCredentialsFromSystemHoconWithError: Either[String, Credentials] = {
-    val hocon =
+    val json =
       s"""
          |
          | {
@@ -139,19 +139,16 @@ object Reader extends EitherSupport {
          |
          |""".stripMargin
 
-    for {
-      source <- TypesafeConfigSource.fromHoconString(hocon)
-      config <- read(defaultConfig from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
 
   /**
-   * Now that you got a gist of the idea, that given the same program
-   * it could read any source, and it behaved in the same manner producing same error accumulation.
-   * Let's go with the behaviour of nesting
+   * LIST, OPTION and NESTING
+   * -------------------------
+   * Now that you got a gist of how to load config from various sources.
+   * Given 1 single description, it could read any source, and it behaved in the same manner producing same error accumulation.
    */
-
   final case class SourceDetails(
     tableName: String,
     partitionCount: Int,
@@ -159,11 +156,17 @@ object Reader extends EitherSupport {
   )
 
   object SourceDetails {
-    val defaultConfig =
-      (string("tableName") |@| int("partitionCount") |@| Credentials.defaultConfig)(SourceDetails.apply, SourceDetails.unapply)
+    /**
+     * EXERCISE 9
+     *
+     * Define the config descriptor for SourceDetails
+     */
+    val defaultConfig: ConfigDescriptor[SourceDetails] = ???
   }
 
   /**
+   * EXERCISE 10:
+   *
    * Read SourceDetails from Map (assuming that it is your system env)
    */
   def readSourceDetails: Either[ReadError[K], SourceDetails] = {
@@ -174,26 +177,10 @@ object Reader extends EitherSupport {
         "username" -> "xyz",
         "password" -> "xyz"
       )
-    read(SourceDetails.defaultConfig from ConfigSource.fromMap(map))
+
+    ???
   }
 
-
-  /**
-   * Try and write a config description corresponding to the below case case class
-   * Note that this time around, we have a list, option and map
-   *
-   * Have a look at how a common config description is behaving differently
-   * to these complex data types.
-   *
-   * Hint:
-   *
-   *  {{{
-   *    val optionalConfig: ConfigDescriptor[Option[String]]= string("key").optional
-   *    val listConfig : ConfigDescriptor[List[String]] = list("key")(string)
-   *    val listConfig2: ConfigDescriptor[List[Int]] = list("key")(int)
-   *    val listConfig3: ConfigDescriptor[List[Int]] = list("key")(int)
-   *  }}}
-   */
   final case class SourceDetails2(
     tableName: String,
     partitionCount: Int,
@@ -203,20 +190,35 @@ object Reader extends EitherSupport {
   )
 
   object SourceDetails2 {
-    // This is slowly becoming verbose enough for the application.
-    val defaultConfig: ConfigDescriptor[SourceDetails2] =
-      (string("tableName") |@|
-        int("partitionCount") |@|
-        list("columns")(string) |@|
-        Credentials.defaultConfig |@|
-        string("renameFileTo").optional
-        )(SourceDetails2.apply, SourceDetails2.unapply)
+    /**
+     * EXERCISE 11:
+     *
+     * Try and write a config description corresponding to the below case case class
+     * Note that this time around, we have a list, option and map
+     *
+     * Have a look at how a common config description is behaving differently
+     * to these complex data types.
+     *
+     * Hint:
+     *
+     *  {{{
+     *    val optionalConfig: ConfigDescriptor[Option[String]] = string("key").optional
+     *    val listConfig : ConfigDescriptor[List[String]]      = list("key")(string)
+     *    val listConfig2: ConfigDescriptor[List[Int]]         = list("key")(int)
+     *    val listConfig3: ConfigDescriptor[List[Int]]         = list("key")(int)
+     *  }}}
+     *
+     *  This is definitely becoming verbose enough for the application, but we will discuss auto derivation in the next section
+     */
+    val defaultConfig: ConfigDescriptor[SourceDetails2] = ???
   }
 
   /**
+   * EXERCISE 12:
+   *
    * Read the SourceDetails2 from a simple map.
-   * Consider map as sort of our system environment / system properties.
-   * The main take away from this problem is retrieving a list from flattned map like source.
+   * Consider map as a representation of system environment / system properties.
+   * The main take away from this problem is retrieving a list from flattened map like source.
    */
   def readSourceDetails2FromMap: Either[ReadError[String], SourceDetails2] = {
     val map =
@@ -229,17 +231,18 @@ object Reader extends EitherSupport {
         "renameFileTo" -> "a"
       )
 
-    read(SourceDetails2.defaultConfig from ConfigSource.fromMap(map, valueDelimiter = Some(',')))
+    ???
   }
 
   /**
-   * Read the SourceDetails2 from a simple hocon.
-   * Consider map as sort of our system environment / system properties.
-   * The main take away from this problem is retrieving a list from Hocon Json.
+   * EXERCISE 13:
    *
-   * The list representation in HOCON is much more nicer rather than fiddling with delimiters.
-   * Same time, note that the only thing that we change here is the source and not the description
-   * and it is still able to read the List.
+   * Read the SourceDetails2 from a simple HOCON/JSON.
+   * Consider map as a representation of system environment / system properties.
+   * The main take away from this problem is retrieving a list from HOCON/JSON.
+   *
+   * The list representation in HOCON is much more nicer rather than representing it in a Map.
+   * The only change here is the source and not the description and it is still able to read the List.
    *
    * You may also try giving `renameFileTo: null` or remove `renameFileTo` as such to see
    * the behaviour of optional. All of this work as you would expect
@@ -259,19 +262,18 @@ object Reader extends EitherSupport {
          |
          |""".stripMargin
 
-    for {
-      source <- TypesafeConfigSource.fromHoconString(hocon)
-      config <- read(SourceDetails2.defaultConfig from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
   /**
+   * NESTING and MAP:
+   * ------------------
+   * EXERCISE 14
    *
-   * Nesting:
+   * Now although we used HOCON, above the config is still flattened with no proper namespacing.
    *
-   * Now although we used HOCON above the config is still flattened with no readable grouping.
-   * It works for a smaller configuration set up, but as soon as we have a large number of them it's good to namespace them properly.
-   * How do we make it work given we have a nested HOCON/json config?
+   * It works for a smaller configuration set up, but as soon as we have a large number of them, it's good to namespace them properly.
+   * How do we make it work given we have a nested HOCON/JSON config?
    */
   def readSourceDetails2FromHoconNested: Either[String, SourceDetails2] = {
     val hocon =
@@ -290,13 +292,7 @@ object Reader extends EitherSupport {
          |""".stripMargin
 
     // This time around we have to have a new description of the config specifying credentials are nested
-    val nonDefaultConfig =
-      (string("tableName") |@|
-        int("partitionCount") |@|
-        list("columns")(string) |@|
-        nested("credentials")(Credentials.defaultConfig) |@|
-        string("renameFileTo").optional
-        )(SourceDetails2.apply, SourceDetails2.unapply)
+    val nonDefaultConfig: ConfigDescriptor[SourceDetails2] = ???
 
     for {
       source <- TypesafeConfigSource.fromHoconString(hocon)
@@ -305,6 +301,8 @@ object Reader extends EitherSupport {
   }
 
   /**
+   * EXERCISE 15:
+   *
    * Now with JSON/HOCON, it was easier for us to represent nested config.
    * But can we achieve the same using a flattened map, which can represent a system environment
    * or system properties.
@@ -320,14 +318,8 @@ object Reader extends EitherSupport {
         "renameFileTo" -> "a"
       )
 
-    // This time around we have to have a new description of the config specifying credentials are nested
-    val nonDefaultConfig =
-      (string("tableName") |@|
-        int("partitionCount") |@|
-        list("columns")(string) |@|
-        nested("credentials")(Credentials.defaultConfig) |@|
-        string("renameFileTo").optional
-        )(SourceDetails2.apply, SourceDetails2.unapply)
+    // Same as above solution
+    val nonDefaultConfig: ConfigDescriptor[SourceDetails2] = ???
 
     val source =
       ConfigSource.fromMap(map, keyDelimiter = Some('_'), valueDelimiter = Some(','))
@@ -337,12 +329,11 @@ object Reader extends EitherSupport {
 
 
   /**
-   * Nesting:
+   * EXERCISE 16: MAP
    *
-   * Now that we know regardless of the source we are a
    * What if your config needs a dynamic set of map.
    *
-   * Say for example you have a key called options which in turn holds all the key value pairs.
+   * Say for example you have a key called options which holds a set of dynamic key-value pairs
    */
   final case class SourceDetails3(
     tableName: String,
@@ -354,22 +345,14 @@ object Reader extends EitherSupport {
   )
 
   object SourceDetails3 {
-    val defaultConfig =
-      (string("tableName") |@|
-        int("partitionCount") |@|
-        list("columns")(string) |@|
-        nested("credentials")(Credentials.defaultConfig) |@|
-        string("renameFileTo").optional |@|
-        map("spark")(string)
-        )(SourceDetails3.apply, SourceDetails3.unapply)
+    val defaultConfig: ConfigDescriptor[SourceDetails3] = ???
 
   }
 
   /**
-   * Nesting:
+   * EXERCISE 16:
    *
-   * Read the SourceDetails3.defaultConfig from an hocon source
-   * @return
+   * Read the SourceDetails3.defaultConfig from an HOCON source
    */
   def readSourceDetails3FromHocon: Either[String, SourceDetails3] = {
     val hocon =
@@ -383,7 +366,7 @@ object Reader extends EitherSupport {
          |     "password" : "123"
          |   }
          |  "renameFileTo" : "a",
-         |  "spark" : {
+         |  "options" : {
          |     "quoteAll" : "true",
          |     "delimiter" : "|"
          |  }
@@ -391,19 +374,16 @@ object Reader extends EitherSupport {
          |
          |""".stripMargin
 
-    for {
-      source <- TypesafeConfigSource.fromHoconString(hocon)
-      config <- read(SourceDetails3.defaultConfig from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
 
   /**
+   * EXERCISE 17:
    *
-   *  Nesting in a flattened config
+   * MAP in a flattened config
    *
-   *  Read the SourceDetails3.defaultConfig from a flattened Map that represents
-   *  SourceDetails3.
+   * Read the SourceDetails3.defaultConfig from a flattened Map that represents SourceDetails3.
    */
   def readSourceDetails3FromSystemEnvNested: Either[ReadError[String], SourceDetails3] = {
     val map =
@@ -418,19 +398,15 @@ object Reader extends EitherSupport {
         "spark_delimiter" -> "|"
       )
 
-    val source =
-      ConfigSource.fromMap(map, keyDelimiter = Some('_'), valueDelimiter = Some(','))
-
-    read(SourceDetails3.defaultConfig from source)
+    ???
   }
 
   /**
-   * Multiple sources:
+   * EXERCISE 18: Multiple sources:
    *
-   * Now assume that we need to override the partitionCount which happens to be in a hoconFile
-   * with a system env.
+   * Now assume that we need to override the partitionCount which happens to be in a HOCON File with a system env.
    *
-   * You can assume a scala Map to be system environment
+   * You can consider a scala Map to be system environment for the purpose of example.
    *
    * HINT: There is an updateSource function in ConfigDescriptor
    */
@@ -455,20 +431,18 @@ object Reader extends EitherSupport {
          |""".stripMargin
 
 
-    val dummySystemEnv =
-      Map("partitionCount" -> "10")
+    val systemEnv =
+      ConfigSource.fromMap(Map("partitionCount" -> "10"))
 
-    for {
-      hocon <- TypesafeConfigSource.fromHoconString(hocon)
-      env   = ConfigSource.fromMap(dummySystemEnv)
-      source = env.orElse(hocon)
-      config <- read(SourceDetails3.defaultConfig from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
   /**
+   *
+   * EXERCISE 19: MAP
+   *
    * Multiple sources and source priority
-   * Now assume that you have already a descriptor that is already attached to a source.
+   * Now assume that you already have a descriptor that is attached to a source.
    * Update the description such that it is now able to read system environment as well.
    */
   def readSourceDetails3ByUpdatingTheSource: Either[String, SourceDetails3] = {
@@ -492,21 +466,21 @@ object Reader extends EitherSupport {
          |""".stripMargin
 
 
-    val dummySystemEnv =
+    val systemEnv =
       ConfigSource.fromMap(Map("partitionCount" -> "10"))
 
-    val existingConfig = SourceDetails3.defaultConfig from dummySystemEnv
+    val existingConfig = SourceDetails3.defaultConfig from systemEnv
 
-    for {
-      hocon <- TypesafeConfigSource.fromHoconString(hocon)
-      config <- read(existingConfig.updateSource(_.orElse(hocon))).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
   /**
-   * Custom behaviours.
-   * Assume that you have a type called Partition that holds the a ZonedDate Time
-   * that's not supported by zio-config.
+   *
+   * EXERCISE 20:
+   *
+   * Custom data types.
+   *
+   * Partition below is a custom data type that's not supported by zio-config.
    * Write the description for it.
    */
 
@@ -521,6 +495,20 @@ object Reader extends EitherSupport {
   )
 
   object SourceDetails4 {
+    final case class Partition(value: ZonedDateTime) extends AnyVal
+
+    object Partition {
+      /**
+       * Custom Types and Documentations
+       * Define a config for partition
+       * use xmapEither. This will be renamed to `transformEither` before zio-config hits 1.0
+       */
+      val defaultConfig: ConfigDescriptor[Partition] =
+        string("partition")
+          .xmapEitherE(v =>
+            Try(ZonedDateTime.parse(v)).toEither.map(Partition.apply))(partition => Right(partition.value.toString))(_.getMessage) ?? "should be a zoned date time"
+    }
+
     val defaultConfig: ConfigDescriptor[SourceDetails4] =
       (string("tableName") |@|
         int("partitionCount") |@|
@@ -529,34 +517,18 @@ object Reader extends EitherSupport {
         nested("credentials")(Credentials.defaultConfig) |@|
         string("renameFileTo").optional |@|
         map("options")(string))(SourceDetails4.apply, SourceDetails4.unapply)
-
-    final case class Partition(value: ZonedDateTime) extends AnyVal
-
-    object Partition {
-      /**
-       * Custom Types and Documentations
-       * Define a config for partition
-       * use xmapEither. This will be renamed to `transformEither` before it is 1.0
-       *
-       */
-      val defaultConfig: ConfigDescriptor[Partition] =
-        string("partition")
-          .xmapEitherE(v =>
-            Try(ZonedDateTime.parse(v)).toEither.map(Partition.apply))(partition => Right(partition.value.toString))(_.getMessage) ?? "should be a zoned date time"
-    }
   }
 
   /**
-   *
-   * Either:
+   * EXERCISE 21:
    *
    * As of now we gave both partitionCount and partition as part of the config.
    * Ideally we need either Partition or the partitionCount
    *
-   * There are many ways to solve this problem. A sealed trait, or you can simply Either[Partition, Int]
+   * There are many ways to solve this problem. A sealed trait, or you can simply use Either[Partition, Int]
    *
    * {{{
-   *   val config: ConfigDescriptor[Either[PartitionCount, Int]] = Partition.defaultConfig |@| int("partitionCount")
+   *   val config: ConfigDescriptor[Either[PartitionCount, Int]] = Partition.defaultConfig.orElseEither(int("partitionCount"))
    * }}}
    *
    */
