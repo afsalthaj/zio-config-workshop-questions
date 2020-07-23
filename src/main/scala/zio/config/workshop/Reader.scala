@@ -709,7 +709,7 @@ object Reader extends EitherSupport {
       config <- read(map("input")(nested("key")(list(Keys.config))) from hocon).leftMap(_.prettyPrint())
     } yield config
   }
-  
+
 }
 
 

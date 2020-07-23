@@ -30,8 +30,10 @@ object ReaderAutomatic extends EitherSupport {
   }
 
   /**
-   * using automatic descriptor to read from HOCON
-   * Try out removing some config and see the errors as well
+   * EXERCISE 25:
+   *
+   * Using automatic descriptor to read from HOCON
+   * Try removing some config and see the errors as well
    */
   def readSourceDetail6FromHocon: Either[String, SourceDetails6] = {
     val hocon =
@@ -53,14 +55,11 @@ object ReaderAutomatic extends EitherSupport {
          |
          |""".stripMargin
 
-    for {
-      source <- TypesafeConfigSource.fromHoconString(hocon)
-      config  <- read(descriptor[SourceDetails6] from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
   /**
-   * Either:
+   * EXERCISE 26:
    *
    * With automatic configuration, make sure Either[LocalDate, Int] works
    */
@@ -96,13 +95,11 @@ object ReaderAutomatic extends EitherSupport {
          |
          |""".stripMargin
 
-    for {
-      source <- TypesafeConfigSource.fromHoconString(hocon)
-      config  <- read(descriptor[SourceDetails7] from source).leftMap(_.prettyPrint())
-    } yield config
+    ???
   }
 
   /**
+   * EXERCISE 27:
    * Assume that there are two ways of configuring credentials.
    * One is username and password (say basic), and the other is clientId and tokenId (say advanced)
    *
@@ -110,26 +107,24 @@ object ReaderAutomatic extends EitherSupport {
    *
    */
 
-  sealed trait Credentials[A]
+  sealed trait Credentials
 
   object Credentials {
-    final case class Basic[A](username: A, password: A) extends Credentials[A]
-    final case class Advanced[A](clientId: A, tokenId: A) extends Credentials[A]
-    final case object NoAuth extends Credentials[String]
+    ???
   }
 
   final case class SourceDetails8(
     tableName: String,
     partition: Either[LocalDate, Int],
     columns: List[String],
-    credentials: Credentials[String],
+    credentials: Credentials,
     renameFileTo: Option[String],
     options: Map[String, String]
   )
 
 
   // Look through the error reports
-  // Make it Gadt
+  // Try making the output type polymorphic
   def readSourceDetails8FromHocon: Either[String, SourceDetails8] = {
     val hocon =
       s"""
@@ -165,7 +160,7 @@ object ReaderAutomatic extends EitherSupport {
     @describe("the base s3 path directory") tableName: String,
     @describe("A specific partition or the partition that it needs to backtrack") partition: Either[LocalDate, Int],
     @describe("list of columns") columns: List[String],
-    credentials: Credentials[String],
+    credentials: Credentials,
     renameFileTo: Option[String],
     @describe("Additional options to run the export job") options: Map[String, String]
   )
@@ -199,14 +194,16 @@ object ReaderAutomatic extends EitherSupport {
   }
 
   /**
+   * EXERCISE 28:
    * Custom types:
-   * Say you have a ZonedDateTime which is not existing in zio-config. Ex: zonedDateTime("something")
+   *
+   * Say you have a ZonedDateTime which is not existing in zio-config.
    */
   final case class SourceDetails10(
     tableName: String,
     partition: Either[SourceDetails10.Partition[ZonedDateTime], Int],
     columns: List[String],
-    credentials: Credentials[String],
+    credentials: Credentials,
     renameFileTo: Option[String],
     options: Map[String, String]
   )
@@ -222,6 +219,8 @@ object ReaderAutomatic extends EitherSupport {
   }
 
   /**
+   * EXERCISE 29:
+   *
    * Read the ZonedDetails10 from HOCON
    */
   def readSourceDetails10FromHocon: Either[Throwable, SourceDetails10] = {
@@ -249,16 +248,13 @@ object ReaderAutomatic extends EitherSupport {
          |}
          |
          |""".stripMargin
-
-    for {
-      source <-  TypesafeConfigSource.fromHoconString(hocon).leftMap(t => new RuntimeException(t))
-      config  <- read(descriptor[SourceDetails10] from source)
-    } yield config
+    ???
   }
 
   /**
-   * Manipulate keys
-   * Read the ZonedDetails10 from HOCON such that keys in HOCON are kebab case
+   * EXERCISE 30: (Manipulating keys)
+   *
+   * Read the ZonedDetails10 from HOCON such that keys in HOCON are kebab-case
    */
   def readSourceDetails10FromHoconKebab: Either[Throwable, SourceDetails10] = {
     implicit def descriptorForZonedDateTime: Descriptor[ZonedDateTime] =
@@ -286,9 +282,6 @@ object ReaderAutomatic extends EitherSupport {
          |
          |""".stripMargin
 
-    for {
-      source <-  TypesafeConfigSource.fromHoconString(hocon).leftMap(t => new RuntimeException(t))
-      config  <- read(descriptor[SourceDetails10].mapKey(camelToKebab) from source)
-    } yield config
+    ???
   }
 }

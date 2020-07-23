@@ -121,25 +121,17 @@ object Writer extends EitherSupport {
   }
 
   // Building block 4; Read and write from File
-  trait StateMachine[E] {
+  trait StateOp[E] {
     def readState: IO[E, State]
     def writeState(state: State): IO[E, Unit]
   }
 
-  object StateMachine {
+  object StateOp {
     import State._
 
-    def fromRef[E](ref: Ref[String]): StateMachine[String] = new StateMachine[String] {
-      override def readState: IO[String, State] =
-        ref.get.flatMap(v => ZIO.fromEither({
-          TypesafeConfigSource.fromHoconString(v)
-            .flatMap(s => read(descriptor[State] from s).leftMap(_.prettyPrint()))
-
-        }))
-
-      override def writeState(state: State): IO[String, Unit] =
-        ZIO.fromEither(write(descriptor[State], state).map(_.toHoconString))
-            .flatMap(str => ref.update(_ => str))
+    def fromRef[E](ref: Ref[String]): StateOp[String] = new StateOp[String] {
+      override def readState: IO[String, State] = ???
+      override def writeState(state: State): IO[String, Unit] = ???
     }
   }
 
