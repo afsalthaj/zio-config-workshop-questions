@@ -110,7 +110,7 @@ object ReaderAutomatic extends EitherSupport {
   sealed trait Credentials
 
   object Credentials {
-    ???
+    case class Basic(username: String, password: String) extends Credentials
   }
 
   final case class SourceDetails8(
